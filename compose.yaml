@@ -1,0 +1,109 @@
+name: remote-dev
+
+# Every service except tailscale joins the tailscale container's network
+# namespace (network_mode: service:tailscale). They share its interfaces and
+# routing table: tailnet traffic goes over tailscale0, and with TS_EXIT_NODE
+# set, all their egress leaves through the exit node.
+#
+# claude / herdr / t3 run as the host user ($USER, $HOME, HOST_UID/HOST_GID)
+# and bind-mount the host's existing state at the same absolute paths, so work
+# continues seamlessly between the host and the containers.
+
+x-dev-build: &dev-build
+  context: ./images
+  dockerfile: Dockerfile
+  args:
+    USERNAME: ${USER:?USER must be set}
+    USER_UID: ${HOST_UID:-1000}
+    USER_GID: ${HOST_GID:-1000}
+    USER_HOME: ${HOME:?HOME must be set}
+  # No pinned versions: always pull the base image and skip the layer cache,
+  # so every build fetches the latest Claude Code and herdr-core.
+  pull: true
+  no_cache: true
+
+x-via-tailscale: &via-tailscale
+  network_mode: service:tailscale
+  userns_mode: ${USERNS_MODE:-}
+  depends_on:
+    tailscale:
+      condition: service_healthy
+  working_dir: ${WORK_DIR:-${HOME}/dev}
+  restart: unless-stopped
+
+services:
+  tailscale:
+    image: docker.io/tailscale/tailscale:latest
+    pull_policy: always
+    user: "0:0"
+    userns_mode: ${USERNS_MODE:-}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_HOSTNAME: ${TS_HOSTNAME:-remote-dev}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "false"          # kernel mode: real routing for the shared netns
+      TS_AUTH_ONCE: "true"
+      TS_ACCEPT_DNS: "false"
+      TS_EXTRA_ARGS: --exit-node=${TS_EXIT_NODE:-} ${TS_EXTRA_ARGS:-}
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9002/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  claude:
+    <<: *via-tailscale
+    build:
+      <<: *dev-build
+      target: claude
+    volumes:
+      - ${WORK_DIR:-${HOME}/dev}:${WORK_DIR:-${HOME}/dev}
+      - ${HOME}/.claude:${HOME}/.claude
+      - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
+      - ${HOME}/.config/git:${HOME}/.config/git:ro
+    stdin_open: true
+    tty: true
+
+  herdr:
+    <<: *via-tailscale
+    build:
+      <<: *dev-build
+      target: herdr
+    user: "0:0"                      # entrypoint starts sshd, then drops to $USER
+    volumes:
+      - ${WORK_DIR:-${HOME}/dev}:${WORK_DIR:-${HOME}/dev}
+      - ${HOME}/.claude:${HOME}/.claude
+      - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
+      - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - ${HOME}/.local/state/herdr-core:${HOME}/.local/state/herdr-core
+      - ssh-host-keys:/etc/ssh/host-keys
+      - ${HOME}/.ssh/authorized_keys:/etc/ssh/authorized_keys/${USER}:ro
+
+  t3:
+    <<: *via-tailscale
+    build:
+      <<: *dev-build
+      target: t3
+    environment:
+      T3CODE_HOST: ${T3_HOST:-0.0.0.0}
+    volumes:
+      - ${WORK_DIR:-${HOME}/dev}:${WORK_DIR:-${HOME}/dev}
+      - ${HOME}/.claude:${HOME}/.claude
+      - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
+      - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - ${HOME}/.t3:${HOME}/.t3
+
+volumes:
+  tailscale-state:
+  ssh-host-keys:
