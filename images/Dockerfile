@@ -31,10 +31,11 @@ RUN apt-get update \
 
 # Docker CLI with the compose and buildx plugins, from Docker's apt repo. No
 # daemon: the CLI talks to the host's engine through its mounted socket.
+# The repo key goes via /tmp for the same AppArmor reason as acli below.
 RUN . /etc/os-release \
- && install -d -m 755 /etc/apt/keyrings \
- && curl -fsSL https://download.docker.com/linux/debian/gpg \
-      -o /etc/apt/keyrings/docker.asc \
+ && curl -fsSL -o /tmp/docker.asc https://download.docker.com/linux/debian/gpg \
+ && install -D -m 644 /tmp/docker.asc /etc/apt/keyrings/docker.asc \
+ && rm /tmp/docker.asc \
  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $VERSION_CODENAME stable" \
       > /etc/apt/sources.list.d/docker.list \
  && apt-get update \
