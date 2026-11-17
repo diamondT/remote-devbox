@@ -59,6 +59,11 @@ services:
       - relay-key:/etc/herdr-relay/key
       - relay-authorized-keys:/etc/herdr-relay/authorized-keys
       - ssh-host-keys:/etc/herdr-relay/host-keys:ro
+    # Lets herdr's sshd bind 127.0.0.1:22 in this shared netns. Under rootless
+    # podman with keep-id, herdr's root has no CAP_NET_BIND_SERVICE here (the
+    # netns belongs to this container's userns). Docker already defaults to 0.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
     devices:
       - /dev/net/tun:/dev/net/tun
     cap_add:
