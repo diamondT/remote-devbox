@@ -33,9 +33,10 @@ x-via-tailscale: &via-tailscale
 
 services:
   tailscale:
-    image: docker.io/tailscale/tailscale:latest
-    pull_policy: always
-    user: "0:0"
+    build:
+      <<: *dev-build
+      dockerfile: tailscale.Dockerfile
+    user: "0:0"                      # tailscaled must be root for Tailscale SSH
     userns_mode: ${USERNS_MODE:-}
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY:-}
@@ -44,11 +45,14 @@ services:
       TS_USERSPACE: "false"          # kernel mode: real routing for the shared netns
       TS_AUTH_ONCE: "true"
       TS_ACCEPT_DNS: "false"
-      TS_EXTRA_ARGS: --exit-node=${TS_EXIT_NODE:-} ${TS_EXTRA_ARGS:-}
+      TS_EXTRA_ARGS: --ssh --exit-node=${TS_EXIT_NODE:-} ${TS_EXTRA_ARGS:-}
       TS_ENABLE_HEALTH_CHECK: "true"
       TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
     volumes:
       - tailscale-state:/var/lib/tailscale
+      - relay-key:/etc/herdr-relay/key
+      - relay-authorized-keys:/etc/herdr-relay/authorized-keys
+      - ssh-host-keys:/etc/herdr-relay/host-keys:ro
     devices:
       - /dev/net/tun:/dev/net/tun
     cap_add:
@@ -88,7 +92,7 @@ services:
       - ${HOME}/.config/git:${HOME}/.config/git:ro
       - ${HOME}/.local/state/herdr-core:${HOME}/.local/state/herdr-core
       - ssh-host-keys:/etc/ssh/host-keys
-      - ${HOME}/.ssh/authorized_keys:/etc/ssh/authorized_keys/${USER}:ro
+      - relay-authorized-keys:/etc/ssh/relay:ro
 
   t3:
     <<: *via-tailscale
@@ -107,3 +111,5 @@ services:
 volumes:
   tailscale-state:
   ssh-host-keys:
+  relay-key:
+  relay-authorized-keys:

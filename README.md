@@ -8,9 +8,9 @@ other.
 
 | service     | what                                   | reach it                                            |
 |-------------|----------------------------------------|-----------------------------------------------------|
-| `tailscale` | tailnet node; owns the network namespace | —                                                  |
+| `tailscale` | tailnet node with Tailscale SSH; owns the network namespace | —                                     |
 | `claude`    | Claude Code CLI                        | `docker compose exec claude claude`                 |
-| `herdr`     | herdr-core (`hc`) + sshd + Claude Code | `ssh $USER@<TS_HOSTNAME>` / `hc machine add $USER@<TS_HOSTNAME> --name box` |
+| `herdr`     | herdr-core (`hc`) + sshd (loopback only) + Claude Code | `ssh $USER@<TS_HOSTNAME>` / `hc machine add $USER@<TS_HOSTNAME> --name box` (Tailscale SSH, relayed) |
 | `t3`        | T3 server (`t3 serve` via `bunx`, headless) | `http://<TS_HOSTNAME>:3773` on the tailnet      |
 
 `claude`, `herdr` and `t3` use `network_mode: service:tailscale`, so all their
@@ -31,7 +31,6 @@ dirs are mounted at the same absolute paths:
 | `~/.gitconfig`, `~/.config/git` (ro) | claude, herdr, t3 |
 | `~/.local/state/herdr-core`  | herdr            |
 | `~/.t3`                      | t3               |
-| `~/.ssh/authorized_keys` (ro, as sshd's key file for `$USER`) | herdr |
 
 All of these must exist on the host. Docker creates a missing source as a
 root-owned directory.
@@ -40,6 +39,7 @@ root-owned directory.
 
 ```sh
 cp .env.example .env            # TS_AUTHKEY, HOST_UID/HOST_GID, WORK_DIR if not ~/dev
+                                # tailnet policy: an "ssh" rule letting you in as $USER (see below)
 
 hc server stop                  # stop the host side first (and quit the T3 / Claude apps)
 docker compose up -d --build    # or: podman compose up -d --build (USERNS_MODE=keep-id)
@@ -55,15 +55,34 @@ docker compose exec t3 t3 pair  # pairing link for the T3 server
   npm package needs a postinstall step that bun skips by default.
 - Nothing is pinned. Builds always pull the base image and skip the layer
   cache (`pull` / `no_cache` in compose.yaml), so every rebuild fetches the
-  latest Bun, Claude Code and herdr-core. The tailscale image has
-  `pull_policy: always`, so it is pulled on every `up`. The Claude auto-updater
-  is off, so rebuild to update.
+  latest Bun, Claude Code, herdr-core and Tailscale (the tailscale image is now
+  built on top of `tailscale/tailscale:latest`, so it updates on `--build`
+  rather than on every `up`). The Claude auto-updater is off, so rebuild to
+  update.
 - The image is tied to one user. Rebuild if you deploy for a different user or
   uid.
 - herdr-core has no TCP API, only a Unix socket. Remote clients reach it over
-  SSH (port 22 on the tailnet IP). Tailscale SSH is not enabled, so that port
-  is free for sshd. Running terminals don't move between host and container.
-  Each side's core starts its own.
+  SSH, and Tailscale SSH (`--ssh`) handles port 22 on the tailnet IP. Auth is
+  your tailnet identity plus the policy's `ssh` rules, not SSH keys. The
+  policy needs a rule like
+  `{"action": "accept", "src": ["autogroup:member"], "dst": ["autogroup:self"], "users": ["<your $USER>"]}`
+  (adjust `dst` if the node is tagged). Running terminals don't move between
+  host and container. Each side's core starts its own.
+- Tailscale SSH starts sessions in the tailscale container, not in herdr. There,
+  `$USER`'s login shell is a relay (`images/herdr-relay.sh`) that runs
+  `ssh 127.0.0.1` to herdr's sshd. sshd listens on loopback only, in the shared
+  network namespace. It accepts only an internal relay key, which the tailscale
+  container generates into the `relay-key` volume and publishes through the
+  `relay-authorized-keys` volume. The key is limited to `from="127.0.0.1"`,
+  with forwarding disabled. The relay pins herdr's host keys from the
+  `ssh-host-keys` volume.
+- Only shells and commands are relayed: `ssh`, `ssh host cmd`, `hc machine add`
+  / `hc --on`, `scp -O`. sftp (so plain `scp`), port forwarding and agent
+  forwarding would run in the tailscale container, not herdr, so don't use
+  them.
+- Existing nodes: `TS_EXTRA_ARGS` (now incl. `--ssh`) may only be applied on
+  first login (`TS_AUTH_ONCE`). If SSH isn't on after upgrading, run
+  `docker compose exec tailscale tailscale set --ssh`.
 - git: the host's `gh auth git-credential` helper isn't in the images, so
   HTTPS pushes to GitHub need another way in (e.g. SSH remotes with keys).
 - To change the exit node on a running node:

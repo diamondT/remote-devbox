@@ -1,9 +1,13 @@
 # Drop-in for the herdr container. Included before the Debian defaults,
 # so these values win.
 Port 22
+# Loopback only: reached through the relay in the tailscale container, never
+# directly from the tailnet (Tailscale SSH owns port 22 on the tailnet IP).
+ListenAddress 127.0.0.1
 HostKey /etc/ssh/host-keys/ssh_host_ed25519_key
 HostKey /etc/ssh/host-keys/ssh_host_rsa_key
-AuthorizedKeysFile /etc/ssh/authorized_keys/%u
+# The relay's public key only (relay-authorized-keys volume).
+AuthorizedKeysFile /etc/ssh/relay/authorized_keys
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
