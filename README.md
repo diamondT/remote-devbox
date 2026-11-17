@@ -9,11 +9,10 @@ other.
 | service     | what                                   | reach it                                            |
 |-------------|----------------------------------------|-----------------------------------------------------|
 | `tailscale` | tailnet node with Tailscale SSH; owns the network namespace | —                                     |
-| `claude`    | Claude Code CLI                        | `docker compose exec claude claude`                 |
 | `herdr`     | herdr-core (`hc`) + sshd (loopback only) + Claude Code | `ssh $USER@<TS_HOSTNAME>` / `hc machine add $USER@<TS_HOSTNAME> --name box` (Tailscale SSH, relayed) |
 | `t3`        | T3 server (`t3 serve` via `bunx`, headless) | `http://<TS_HOSTNAME>:3773` on the tailnet      |
 
-`claude`, `herdr` and `t3` use `network_mode: service:tailscale`, so all their
+`herdr` and `t3` use `network_mode: service:tailscale`, so all their
 traffic goes through the tailscale container's network stack. If you set
 `TS_EXIT_NODE`, all their internet egress also goes through that exit node.
 Name resolution still uses the engine's DNS.
@@ -26,9 +25,9 @@ dirs are mounted at the same absolute paths:
 
 | host path                    | mounted in       |
 |------------------------------|------------------|
-| `$WORK_DIR` (`~/dev`)        | claude, herdr, t3 |
-| `~/.claude`                  | claude, herdr, t3 |
-| `~/.gitconfig`, `~/.config/git` (ro) | claude, herdr, t3 |
+| `$WORK_DIR` (`~/dev`)        | herdr, t3        |
+| `~/.claude`                  | herdr, t3        |
+| `~/.gitconfig`, `~/.config/git` (ro) | herdr, t3        |
 | `~/.zshrc`, `~/.config/starship.toml`, `~/.jdks` (ro) | herdr |
 | `~/.local/state/herdr-core`  | herdr            |
 | `~/.m2/repository` (Maven cache) | herdr        |
@@ -50,7 +49,7 @@ docker compose up -d
 ```
 
 The script writes `compose.override.yaml` (loaded automatically by docker
-compose; gitignored). It bind-mounts into claude, herdr and t3, read-only:
+compose; gitignored). It bind-mounts into herdr and t3, read-only:
 
 - each listed key and its `.pub`, at the same path as on the host
 - `/etc/ssh/ssh_config.d/remote-dev-keys.conf`, with a `Host` block per entry:

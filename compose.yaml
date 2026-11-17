@@ -5,7 +5,7 @@ name: remote-dev
 # routing table: tailnet traffic goes over tailscale0, and with TS_EXIT_NODE
 # set, all their egress leaves through the exit node.
 #
-# claude / herdr / t3 run as the host user ($USER, $HOME, HOST_UID/HOST_GID)
+# herdr / t3 run as the host user ($USER, $HOME, HOST_UID/HOST_GID)
 # and bind-mount the host's existing state at the same absolute paths, so work
 # continues seamlessly between the host and the containers.
 
@@ -76,21 +76,6 @@ services:
       retries: 6
       start_period: 20s
     restart: unless-stopped
-
-  claude:
-    <<: *via-tailscale
-    build:
-      <<: *dev-build
-      target: claude
-    volumes:
-      - ${WORK_DIR:-${HOME}/dev}:${WORK_DIR:-${HOME}/dev}
-      - ${HOME}/.claude:${HOME}/.claude
-      - ${HOME}/.agents:${HOME}/.agents
-      - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
-      - ${HOME}/.config/git:${HOME}/.config/git:ro
-      - /sys:/sys:ro                 # see note on x-via-tailscale
-    stdin_open: true
-    tty: true
 
   herdr:
     <<: *via-tailscale
