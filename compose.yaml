@@ -103,6 +103,8 @@ services:
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
       - /sys:/sys:ro                 # see note on x-via-tailscale
+      - ${HOME}/.zshrc:${HOME}/.zshrc:ro
+      - ${HOME}/.config/starship.toml:${HOME}/.config/starship.toml:ro
       - ${HOME}/.local/state/herdr-core:${HOME}/.local/state/herdr-core
       - ssh-host-keys:/etc/ssh/host-keys
       - relay-authorized-keys:/etc/ssh/relay:ro

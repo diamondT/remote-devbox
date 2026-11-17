@@ -71,13 +71,18 @@ ARG USERNAME
 ARG USER_UID=1000
 USER root
 # Password "*" = none set, but not "locked", so key-only SSH login works.
+# zsh is the login shell (SSH sessions, and herdr-core panes via $SHELL). The
+# host's ~/.zshrc is bind-mounted read-only (see compose.yaml); starship, eza
+# and bat (installed as batcat) are tools it uses.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-server \
+ && apt-get install -y --no-install-recommends \
+      openssh-server zsh starship eza bat \
  && rm -rf /var/lib/apt/lists/* \
  && rm -f /etc/ssh/ssh_host_* \
  && curl -fsSL https://releases.herdr.dev/core/install.sh \
       | HC_INSTALL_DIR=/usr/local/bin sh \
- && usermod -p '*' "$USERNAME"
+ && usermod -p '*' -s /usr/bin/zsh "$USERNAME"
+ENV SHELL=/usr/bin/zsh
 
 # SSH sessions start with a clean environment; pam_env loads this file.
 RUN printf '%s\n' \

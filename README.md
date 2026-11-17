@@ -29,6 +29,7 @@ dirs are mounted at the same absolute paths:
 | `$WORK_DIR` (`~/dev`)        | claude, herdr, t3 |
 | `~/.claude`                  | claude, herdr, t3 |
 | `~/.gitconfig`, `~/.config/git` (ro) | claude, herdr, t3 |
+| `~/.zshrc`, `~/.config/starship.toml` (ro) | herdr |
 | `~/.local/state/herdr-core`  | herdr            |
 | `~/.t3`                      | t3               |
 
