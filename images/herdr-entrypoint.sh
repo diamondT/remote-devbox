@@ -16,6 +16,10 @@ uid=$(id -u "$user")
 install -d -m 700 -o "$user" -g "$(id -g "$user")" "/run/user/$uid"
 export XDG_RUNTIME_DIR="/run/user/$uid"
 
+# D-Bus session bus + keyring (for bb), as the host user. The base image's
+# entrypoint does this for the other services.
+runuser -u "$user" -- /usr/local/bin/keyring-start
+
 # Start the core as the host user (never as root). Backgrounded so it works
 # whether or not `hc server start` detaches; `hc` also starts one on demand.
 runuser -u "$user" -- hc server start &

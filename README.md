@@ -37,6 +37,9 @@ dirs are mounted at the same absolute paths:
 All of these must exist on the host. Docker creates a missing source as a
 root-owned directory.
 
+The build also copies the host's `~/.cargo/bin/bb` (Bitbucket CLI) into the
+image, so it must exist on the host too. Rebuild after updating it.
+
 ### SSH keys
 
 `~/.ssh` is not mounted. To give the containers SSH access to specific hosts,
@@ -89,6 +92,13 @@ docker compose exec t3 t3 pair  # pairing link for the T3 server
   update.
 - The image is tied to one user. Rebuild if you deploy for a different user or
   uid.
+- bb keeps its credentials in the Secret Service, so each container runs its
+  own D-Bus session bus and GNOME Keyring (`images/keyring-start.sh`). The
+  host's keyring is password-protected, so it can't be shared: run
+  `bb auth login` once in herdr and once in t3. The keyring and bb's index
+  persist in per-service volumes (`herdr-keyring`/`herdr-bb`,
+  `t3-keyring`/`t3-bb`). The container keyrings are unlocked with a fixed
+  password, so the secrets are effectively unencrypted at rest in those volumes.
 - herdr-core has no TCP API, only a Unix socket. Remote clients reach it over
   SSH, and Tailscale SSH (`--ssh`) handles port 22 on the tailnet IP. Auth is
   your tailnet identity plus the policy's `ssh` rules, not SSH keys. The

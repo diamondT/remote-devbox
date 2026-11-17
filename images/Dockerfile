@@ -25,6 +25,18 @@ RUN arch=$(dpkg --print-architecture) \
       "https://acli.atlassian.com/linux/latest/acli_linux_${arch}/acli" \
  && chmod 755 /usr/local/bin/acli
 
+# bb (Bitbucket CLI): a copy of the host's ~/.cargo/bin/bb (the "cargo-bin"
+# build context in compose.yaml), so rebuild after updating it on the host.
+# It keeps its secrets in the Secret Service, so each container runs its own
+# D-Bus session bus and an unlocked GNOME Keyring (see keyring-start.sh).
+# dbus-x11 provides the session bus without pulling in systemd.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends dbus-x11 gnome-keyring \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=cargo-bin bb /usr/local/bin/bb
+COPY keyring-start.sh /usr/local/bin/keyring-start
+RUN chmod 755 /usr/local/bin/bb /usr/local/bin/keyring-start
+
 # Replace the image's "bun" (uid 1000) account with the host user. The dirs
 # that get bind-mounted into are pre-created so their parents aren't root-owned.
 RUN test -n "$USERNAME" && test -n "$USER_HOME" \
@@ -33,12 +45,16 @@ RUN test -n "$USERNAME" && test -n "$USER_HOME" \
  && useradd -u "$USER_UID" -g "$USER_GID" -d "$USER_HOME" -m -s /bin/bash "$USERNAME" \
  && mkdir -p "$USER_HOME/.claude" "$USER_HOME/.config" "$USER_HOME/.local/state" \
       "$USER_HOME/.ssh" "$USER_HOME/.m2" \
+      "$USER_HOME/.config/bb" "$USER_HOME/.local/share/keyrings" \
  && chmod 700 "$USER_HOME/.ssh" \
- && chown -R "$USER_UID:$USER_GID" "$USER_HOME"
+ && chown -R "$USER_UID:$USER_GID" "$USER_HOME" \
+ && install -d -m 700 -o "$USER_UID" -g "$USER_GID" "/run/user/$USER_UID"
 
-ENV HOST_USER=${USERNAME}
+ENV HOST_USER=${USERNAME} \
+    XDG_RUNTIME_DIR=/run/user/${USER_UID} \
+    DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${USER_UID}/bus
 WORKDIR ${USER_HOME}
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/keyring-start"]
 
 # ---------------------------------------------------------------- claude
 FROM base AS claude
@@ -117,6 +133,7 @@ RUN apt-get update \
 RUN printf '%s\n' \
       'DISABLE_AUTOUPDATER=1' \
       "XDG_RUNTIME_DIR=/run/user/${USER_UID}" \
+      "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${USER_UID}/bus" \
       >> /etc/environment
 
 COPY sshd_config /etc/ssh/sshd_config.d/10-remote-dev.conf
