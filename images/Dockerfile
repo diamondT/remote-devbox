@@ -14,9 +14,12 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 ARG USER_HOME
 
+# python3 and jq: Claude Code plugin hooks from the host's ~/.claude need them
+# (e.g. remember's PostToolUse hook exits 1 without a Python >= 3.9).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl git openssh-client ripgrep procps less tini \
+      python3 jq \
  && rm -rf /var/lib/apt/lists/*
 
 # Atlassian CLI (acli): latest release binary for the build architecture.
