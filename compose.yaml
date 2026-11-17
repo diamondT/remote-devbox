@@ -89,6 +89,7 @@ services:
       - ${HOME}/.agents:${HOME}/.agents
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - ${HOME}/.config/acli:${HOME}/.config/acli
       - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.zshrc:${HOME}/.zshrc:ro
       - ${HOME}/.config/starship.toml:${HOME}/.config/starship.toml:ro
@@ -111,6 +112,7 @@ services:
       - ${HOME}/.agents:${HOME}/.agents
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - ${HOME}/.config/acli:${HOME}/.config/acli
       - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.t3:${HOME}/.t3
 

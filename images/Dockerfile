@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # One Dockerfile, three targets (claude, herdr, t3) sharing a common base.
 # Nothing is pinned: compose builds with pull + no_cache, so every rebuild
-# fetches the latest base image, Claude Code and herdr-core.
+# fetches the latest base image, Claude Code, herdr-core and acli.
 #
 # The image mirrors the host user (name, uid/gid, home path), so the host's
 # ~/.claude, ~/.t3, herdr state and project dirs can be bind-mounted at the
@@ -18,6 +18,12 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl git openssh-client ripgrep procps less tini \
  && rm -rf /var/lib/apt/lists/*
+
+# Atlassian CLI (acli): latest release binary for the build architecture.
+RUN arch=$(dpkg --print-architecture) \
+ && curl -fsSL -o /usr/local/bin/acli \
+      "https://acli.atlassian.com/linux/latest/acli_linux_${arch}/acli" \
+ && chmod 755 /usr/local/bin/acli
 
 # Replace the image's "bun" (uid 1000) account with the host user. The dirs
 # that get bind-mounted into are pre-created so their parents aren't root-owned.

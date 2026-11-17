@@ -28,6 +28,7 @@ dirs are mounted at the same absolute paths:
 | `$WORK_DIR` (`~/dev`)        | herdr, t3        |
 | `~/.claude`                  | herdr, t3        |
 | `~/.gitconfig`, `~/.config/git` (ro) | herdr, t3        |
+| `~/.config/acli` (Atlassian CLI auth) | herdr, t3 |
 | `~/.zshrc`, `~/.config/starship.toml`, `~/.jdks` (ro) | herdr |
 | `~/.local/state/herdr-core`  | herdr            |
 | `~/.m2/repository` (Maven cache) | herdr        |
@@ -82,7 +83,7 @@ docker compose exec t3 t3 pair  # pairing link for the T3 server
   npm package needs a postinstall step that bun skips by default.
 - Nothing is pinned. Builds always pull the base image and skip the layer
   cache (`pull` / `no_cache` in compose.yaml), so every rebuild fetches the
-  latest Bun, Claude Code, herdr-core and Tailscale (the tailscale image is now
+  latest Bun, Claude Code, herdr-core, acli and Tailscale (the tailscale image is now
   built on top of `tailscale/tailscale:latest`, so it updates on `--build`
   rather than on every `up`). The Claude auto-updater is off, so rebuild to
   update.
