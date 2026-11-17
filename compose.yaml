@@ -22,6 +22,12 @@ x-dev-build: &dev-build
   pull: true
   no_cache: true
 
+# Services joining the tailscale netns bind-mount the host's /sys (read-only)
+# instead of getting a fresh sysfs. Under rootless podman with keep-id, each
+# container has its own userns that doesn't own tailscale's netns, so the
+# kernel refuses the sysfs mount and runc fails (crun falls back to a bind
+# mount itself). Lists don't merge through YAML anchors, so the mount is
+# repeated in each service's volumes.
 x-via-tailscale: &via-tailscale
   network_mode: service:tailscale
   userns_mode: ${USERNS_MODE:-}
@@ -76,6 +82,7 @@ services:
       - ${HOME}/.claude:${HOME}/.claude
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - /sys:/sys:ro                 # see note on x-via-tailscale
     stdin_open: true
     tty: true
 
@@ -90,6 +97,7 @@ services:
       - ${HOME}/.claude:${HOME}/.claude
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.local/state/herdr-core:${HOME}/.local/state/herdr-core
       - ssh-host-keys:/etc/ssh/host-keys
       - relay-authorized-keys:/etc/ssh/relay:ro
@@ -106,6 +114,7 @@ services:
       - ${HOME}/.claude:${HOME}/.claude
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
+      - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.t3:${HOME}/.t3
 
 volumes:
