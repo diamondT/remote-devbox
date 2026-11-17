@@ -78,9 +78,12 @@ RUN test -n "$USERNAME" && test -n "$USER_HOME" \
  && chown -R "$USER_UID:$USER_GID" "$USER_HOME" \
  && install -d -m 700 -o "$USER_UID" -g "$USER_GID" "/run/user/$USER_UID"
 
+# Testcontainers: containers started on the host's engine (via the mounted
+# socket) publish their ports on the host, not in this container's netns.
 ENV HOST_USER=${USERNAME} \
     XDG_RUNTIME_DIR=/run/user/${USER_UID} \
-    DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${USER_UID}/bus
+    DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${USER_UID}/bus \
+    TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
 WORKDIR ${USER_HOME}
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/keyring-start"]
 
@@ -162,6 +165,7 @@ RUN printf '%s\n' \
       'DISABLE_AUTOUPDATER=1' \
       "XDG_RUNTIME_DIR=/run/user/${USER_UID}" \
       "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${USER_UID}/bus" \
+      'TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal' \
       >> /etc/environment
 
 COPY sshd_config /etc/ssh/sshd_config.d/10-remote-dev.conf
