@@ -23,22 +23,25 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Atlassian CLI (acli): latest release binary for the build architecture.
+# Downloaded to /tmp first: hosts with AppArmor's curl profile (attached by
+# path, so it also hits curl in unconfined containers) only let curl write
+# under $HOME and /tmp.
 RUN arch=$(dpkg --print-architecture) \
- && curl -fsSL -o /usr/local/bin/acli \
+ && curl -fsSL -o /tmp/acli \
       "https://acli.atlassian.com/linux/latest/acli_linux_${arch}/acli" \
- && chmod 755 /usr/local/bin/acli
+ && install -m 755 /tmp/acli /usr/local/bin/acli \
+ && rm /tmp/acli
 
-# bb (Bitbucket CLI): a copy of the host's ~/.cargo/bin/bb (the "cargo-bin"
-# build context in compose.yaml), so rebuild after updating it on the host.
-# It keeps its secrets in the Secret Service, so each container runs its own
-# D-Bus session bus and an unlocked GNOME Keyring (see keyring-start.sh).
+# bb (Bitbucket CLI) is the host's ~/.cargo/bin/bb, bind-mounted by compose.yaml
+# at /usr/local/bin/bb. It keeps its secrets in the Secret Service, so each
+# container runs its own D-Bus session bus and an unlocked GNOME Keyring (see
+# keyring-start.sh).
 # dbus-x11 provides the session bus without pulling in systemd.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends dbus-x11 gnome-keyring \
  && rm -rf /var/lib/apt/lists/*
-COPY --from=cargo-bin bb /usr/local/bin/bb
 COPY keyring-start.sh /usr/local/bin/keyring-start
-RUN chmod 755 /usr/local/bin/bb /usr/local/bin/keyring-start
+RUN chmod 755 /usr/local/bin/keyring-start
 
 # Replace the image's "bun" (uid 1000) account with the host user. The dirs
 # that get bind-mounted into are pre-created so their parents aren't root-owned.

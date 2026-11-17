@@ -29,6 +29,7 @@ dirs are mounted at the same absolute paths:
 | `~/.claude`                  | herdr, t3        |
 | `~/.gitconfig`, `~/.config/git` (ro) | herdr, t3        |
 | `~/.config/acli` (Atlassian CLI auth) | herdr, t3 |
+| `~/.cargo/bin/bb` (Bitbucket CLI, ro, at `/usr/local/bin/bb`) | herdr, t3 |
 | `~/.zshrc`, `~/.config/starship.toml`, `~/.jdks` (ro) | herdr |
 | `~/.local/state/herdr-core`  | herdr            |
 | `~/.m2/repository` (Maven cache) | herdr        |
@@ -36,9 +37,6 @@ dirs are mounted at the same absolute paths:
 
 All of these must exist on the host. Docker creates a missing source as a
 root-owned directory.
-
-The build also copies the host's `~/.cargo/bin/bb` (Bitbucket CLI) into the
-image, so it must exist on the host too. Rebuild after updating it.
 
 ### SSH keys
 

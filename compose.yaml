@@ -12,9 +12,6 @@ name: remote-dev
 x-dev-build: &dev-build
   context: ./images
   dockerfile: Dockerfile
-  # The host's cargo bin dir; the image copies bb from it.
-  additional_contexts:
-    cargo-bin: ${HOME}/.cargo/bin
   args:
     USERNAME: ${USER:?USER must be set}
     USER_UID: ${HOST_UID:-1000}
@@ -93,6 +90,7 @@ services:
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
       - ${HOME}/.config/acli:${HOME}/.config/acli
+      - ${HOME}/.cargo/bin/bb:/usr/local/bin/bb:ro
       - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.zshrc:${HOME}/.zshrc:ro
       - ${HOME}/.config/starship.toml:${HOME}/.config/starship.toml:ro
@@ -120,6 +118,7 @@ services:
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       - ${HOME}/.config/git:${HOME}/.config/git:ro
       - ${HOME}/.config/acli:${HOME}/.config/acli
+      - ${HOME}/.cargo/bin/bb:/usr/local/bin/bb:ro
       - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.t3:${HOME}/.t3
       - t3-keyring:${HOME}/.local/share/keyrings   # see herdr
