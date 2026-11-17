@@ -13,6 +13,13 @@ ARG USERNAME
 ARG USER_UID=1000
 ARG USER_GID=1000
 ARG USER_HOME
+ARG DOCKER_GID
+
+# Group owning the host's docker socket (mounted in compose.yaml), created
+# before any package can take its gid for a system group. If the gid is
+# already taken, the user joins that group instead (see useradd below).
+RUN test -n "$DOCKER_GID" \
+ && { getent group "$DOCKER_GID" >/dev/null || groupadd -g "$DOCKER_GID" docker; }
 
 # python3 and jq: Claude Code plugin hooks from the host's ~/.claude need them
 # (e.g. remember's PostToolUse hook exits 1 without a Python >= 3.9).
@@ -20,6 +27,19 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl git openssh-client ripgrep procps less tini \
       python3 jq \
+ && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI with the compose and buildx plugins, from Docker's apt repo. No
+# daemon: the CLI talks to the host's engine through its mounted socket.
+RUN . /etc/os-release \
+ && install -d -m 755 /etc/apt/keyrings \
+ && curl -fsSL https://download.docker.com/linux/debian/gpg \
+      -o /etc/apt/keyrings/docker.asc \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $VERSION_CODENAME stable" \
+      > /etc/apt/sources.list.d/docker.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+      docker-ce-cli docker-compose-plugin docker-buildx-plugin \
  && rm -rf /var/lib/apt/lists/*
 
 # Atlassian CLI (acli): latest release binary for the build architecture.
@@ -48,7 +68,8 @@ RUN chmod 755 /usr/local/bin/keyring-start
 RUN test -n "$USERNAME" && test -n "$USER_HOME" \
  && userdel -r bun \
  && { getent group "$USER_GID" >/dev/null || groupadd -g "$USER_GID" "$USERNAME"; } \
- && useradd -u "$USER_UID" -g "$USER_GID" -d "$USER_HOME" -m -s /bin/bash "$USERNAME" \
+ && useradd -u "$USER_UID" -g "$USER_GID" -d "$USER_HOME" -m -s /bin/bash \
+      -G "$(getent group "$DOCKER_GID" | cut -d: -f1)" "$USERNAME" \
  && mkdir -p "$USER_HOME/.claude" "$USER_HOME/.config" "$USER_HOME/.local/state" \
       "$USER_HOME/.ssh" "$USER_HOME/.m2" \
       "$USER_HOME/.config/bb" "$USER_HOME/.local/share/keyrings" \

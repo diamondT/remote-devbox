@@ -17,6 +17,7 @@ x-dev-build: &dev-build
     USER_UID: ${HOST_UID:-1000}
     USER_GID: ${HOST_GID:-1000}
     USER_HOME: ${HOME:?HOME must be set}
+    DOCKER_GID: ${DOCKER_GID:?DOCKER_GID must be set (gid of /var/run/docker.sock)}
   # No pinned versions: always pull the base image and skip the layer cache,
   # so every build fetches the latest Claude Code and herdr-core.
   pull: true
@@ -103,6 +104,7 @@ services:
       - herdr-bb:${HOME}/.config/bb
       - ssh-host-keys:/etc/ssh/host-keys
       - relay-authorized-keys:/etc/ssh/relay:ro
+      - /var/run/docker.sock:/var/run/docker.sock   # host's engine (root-equivalent)
 
   t3:
     <<: *via-tailscale
@@ -123,6 +125,7 @@ services:
       - ${HOME}/.t3:${HOME}/.t3
       - t3-keyring:${HOME}/.local/share/keyrings   # see herdr
       - t3-bb:${HOME}/.config/bb
+      - /var/run/docker.sock:/var/run/docker.sock   # see herdr
 
 volumes:
   tailscale-state:

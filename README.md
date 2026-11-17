@@ -34,6 +34,7 @@ dirs are mounted at the same absolute paths:
 | `~/.local/state/herdr-core`  | herdr            |
 | `~/.m2/repository` (Maven cache) | herdr        |
 | `~/.t3`                      | t3               |
+| `/var/run/docker.sock`       | herdr, t3        |
 
 All of these must exist on the host. Docker creates a missing source as a
 root-owned directory.
@@ -64,10 +65,29 @@ compose; gitignored). It bind-mounts into herdr and t3, read-only:
 There is no ssh-agent in the containers, so keys with a passphrase prompt for
 it (the script warns), and non-interactive git over SSH fails with them.
 
+### Docker
+
+herdr and t3 have the docker CLI (with compose and buildx) and the host's
+`/var/run/docker.sock`, so `docker` and `docker compose` inside them drive the
+host's engine. There is no daemon in the containers. Set `DOCKER_GID` in `.env`
+to the socket's gid (`stat -c %g /var/run/docker.sock`). The image adds the
+user to a group with that gid, and you need to rebuild if it changes.
+
+- Bind mounts resolve on the host. Paths under `$WORK_DIR` are the same on both
+  sides, so `-v $PWD:/app` and relative mounts in a project's compose file work.
+  Paths that exist only inside the container (e.g. `/tmp`) don't.
+- Images, containers, volumes and build cache are shared with the host's engine.
+- Containers started this way use the host's network, not the tailscale
+  network namespace. Their published ports aren't on `localhost` in herdr/t3,
+  and their egress doesn't go through `TS_EXIT_NODE`. To share herdr's
+  network instead, run them with `--network container:remote-dev-tailscale-1`.
+- Access to the socket is root on the host, for anyone who can get a shell in
+  herdr or t3 (including through the tailnet `ssh` rule).
+
 ## Setup
 
 ```sh
-cp .env.example .env            # TS_AUTHKEY, HOST_UID/HOST_GID, WORK_DIR if not ~/dev
+cp .env.example .env            # TS_AUTHKEY, HOST_UID/HOST_GID, DOCKER_GID, WORK_DIR if not ~/dev
                                 # tailnet policy: an "ssh" rule letting you in as $USER (see below)
 
 hc server stop                  # stop the host side first (and quit the T3 / Claude apps)
