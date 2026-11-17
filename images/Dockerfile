@@ -26,6 +26,8 @@ RUN test -n "$USERNAME" && test -n "$USER_HOME" \
  && { getent group "$USER_GID" >/dev/null || groupadd -g "$USER_GID" "$USERNAME"; } \
  && useradd -u "$USER_UID" -g "$USER_GID" -d "$USER_HOME" -m -s /bin/bash "$USERNAME" \
  && mkdir -p "$USER_HOME/.claude" "$USER_HOME/.config" "$USER_HOME/.local/state" \
+      "$USER_HOME/.ssh" \
+ && chmod 700 "$USER_HOME/.ssh" \
  && chown -R "$USER_UID:$USER_GID" "$USER_HOME"
 
 ENV HOST_USER=${USERNAME}

@@ -36,6 +36,32 @@ dirs are mounted at the same absolute paths:
 All of these must exist on the host. Docker creates a missing source as a
 root-owned directory.
 
+### SSH keys
+
+`~/.ssh` is not mounted. To give the containers SSH access to specific hosts,
+list them with their keys in `ssh-keys.conf` (see `ssh-keys.conf.example`), one
+`<host> <private key>` per line, then run `./ssh-keys.sh`:
+
+```sh
+cp ssh-keys.conf.example ssh-keys.conf   # e.g. ssh.bitbucket.org  ~/.ssh/LAPTOP
+./ssh-keys.sh                            # re-run after every change
+docker compose up -d
+```
+
+The script writes `compose.override.yaml` (loaded automatically by docker
+compose; gitignored). It bind-mounts into claude, herdr and t3, read-only:
+
+- each listed key and its `.pub`, at the same path as on the host
+- `/etc/ssh/ssh_config.d/remote-dev-keys.conf`, with a `Host` block per entry:
+  `IdentityFile` + `IdentitiesOnly yes`, plus `HostName`/`Port`/`User` as your
+  own ssh config resolves them (`ssh -G`), so aliases work the same
+- `/etc/ssh/ssh_known_hosts`, with only those hosts' entries copied from your
+  `~/.ssh/known_hosts`. ssh to each host once on the host first; the script
+  warns about hosts it has no entry for.
+
+There is no ssh-agent in the containers, so keys with a passphrase prompt for
+it (the script warns), and non-interactive git over SSH fails with them.
+
 ## Setup
 
 ```sh
@@ -85,7 +111,8 @@ docker compose exec t3 t3 pair  # pairing link for the T3 server
   first login (`TS_AUTH_ONCE`). If SSH isn't on after upgrading, run
   `docker compose exec tailscale tailscale set --ssh`.
 - git: the host's `gh auth git-credential` helper isn't in the images, so
-  HTTPS pushes to GitHub need another way in (e.g. SSH remotes with keys).
+  HTTPS pushes to GitHub need another way in (e.g. SSH remotes with keys, see
+  [SSH keys](#ssh-keys)).
 - To change the exit node on a running node:
   `docker compose exec tailscale tailscale set --exit-node=<node>`.
 - Rootless podman: set `USERNS_MODE=keep-id` so files keep your uid on the

@@ -1,0 +1,7 @@
+# Copy to ssh-keys.conf, then run ./ssh-keys.sh and `docker compose up -d`.
+# One host per line: <host> <private key>. Only the keys listed here (and
+# their .pub) are mounted into claude, herdr and t3, read-only.
+# HostName/Port/User come from your own ~/.ssh/config (ssh -G <host>), and the
+# host key is copied from your ~/.ssh/known_hosts, so ssh to each host here
+# once before running the script.
+ssh.bitbucket.org  ~/.ssh/LAPTOP
