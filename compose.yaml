@@ -105,6 +105,8 @@ services:
       - /sys:/sys:ro                 # see note on x-via-tailscale
       - ${HOME}/.zshrc:${HOME}/.zshrc:ro
       - ${HOME}/.config/starship.toml:${HOME}/.config/starship.toml:ro
+      - ${HOME}/.jdks:${HOME}/.jdks:ro
+      - ${HOME}/.m2/repository:${HOME}/.m2/repository
       - ${HOME}/.local/state/herdr-core:${HOME}/.local/state/herdr-core
       - ssh-host-keys:/etc/ssh/host-keys
       - relay-authorized-keys:/etc/ssh/relay:ro

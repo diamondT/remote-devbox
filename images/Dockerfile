@@ -26,7 +26,7 @@ RUN test -n "$USERNAME" && test -n "$USER_HOME" \
  && { getent group "$USER_GID" >/dev/null || groupadd -g "$USER_GID" "$USERNAME"; } \
  && useradd -u "$USER_UID" -g "$USER_GID" -d "$USER_HOME" -m -s /bin/bash "$USERNAME" \
  && mkdir -p "$USER_HOME/.claude" "$USER_HOME/.config" "$USER_HOME/.local/state" \
-      "$USER_HOME/.ssh" \
+      "$USER_HOME/.ssh" "$USER_HOME/.m2" \
  && chmod 700 "$USER_HOME/.ssh" \
  && chown -R "$USER_UID:$USER_GID" "$USER_HOME"
 
@@ -85,6 +85,27 @@ RUN apt-get update \
       | HC_INSTALL_DIR=/usr/local/bin sh \
  && usermod -p '*' -s /usr/bin/zsh "$USERNAME"
 ENV SHELL=/usr/bin/zsh
+
+# Java: Debian's OpenJDK 25 is the system default, so java is on PATH in every
+# session. The host's ~/.jdks is also mounted read-only (see compose.yaml), so
+# the JAVA_HOME the host's ~/.zshrc sets, and its JDK-switching aliases,
+# resolve in interactive shells too.
+# Maven: the newest 4.x on Maven Central (pre-releases included, as 4 has no
+# final release yet), checked against its published SHA-512.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openjdk-25-jdk-headless \
+ && rm -rf /var/lib/apt/lists/* \
+ && base=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven \
+ && v=$(curl -fsSL "$base/maven-metadata.xml" \
+        | sed -n 's|.*<version>\(4\.[^<]*\)</version>.*|\1|p' | tail -n 1) \
+ && test -n "$v" \
+ && curl -fsSL -o /tmp/maven.tar.gz "$base/$v/apache-maven-$v-bin.tar.gz" \
+ && sha=$(curl -fsSL "$base/$v/apache-maven-$v-bin.tar.gz.sha512" | cut -d' ' -f1) \
+ && echo "$sha  /tmp/maven.tar.gz" | sha512sum -c - \
+ && mkdir /opt/maven \
+ && tar -xzf /tmp/maven.tar.gz -C /opt/maven --strip-components=1 \
+ && rm /tmp/maven.tar.gz \
+ && ln -s /opt/maven/bin/mvn /usr/local/bin/mvn
 
 # SSH sessions start with a clean environment; pam_env loads this file.
 RUN printf '%s\n' \
