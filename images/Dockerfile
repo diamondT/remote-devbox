@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # One Dockerfile, three targets (claude, herdr, t3) sharing a common base.
 # Nothing is pinned: compose builds with pull + no_cache, so every rebuild
-# fetches the latest base image, Claude Code, herdr-core and acli.
+# fetches the latest base image, Claude Code, herdr-core, acli and worktrunk.
 #
 # The image mirrors the host user (name, uid/gid, home path), so the host's
 # ~/.claude, ~/.t3, herdr state and project dirs can be bind-mounted at the
@@ -52,6 +52,21 @@ RUN arch=$(dpkg --print-architecture) \
       "https://acli.atlassian.com/linux/latest/acli_linux_${arch}/acli" \
  && install -m 755 /tmp/acli /usr/local/bin/acli \
  && rm /tmp/acli
+
+# Worktrunk (wt, plus git-wt for `git wt`): latest release's static musl
+# binaries, checked against the published SHA-256. Via /tmp as for acli. The
+# host's ~/.zshrc sets up its shell integration when wt is on PATH.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends xz-utils \
+ && rm -rf /var/lib/apt/lists/* \
+ && name="worktrunk-$(uname -m)-unknown-linux-musl" \
+ && url="https://github.com/max-sixty/worktrunk/releases/latest/download/$name.tar.xz" \
+ && mkdir /tmp/wt && cd /tmp/wt \
+ && curl -fsSL -o "$name.tar.xz" "$url" \
+ && curl -fsSL "$url.sha256" | sha256sum -c - \
+ && tar -xJf "$name.tar.xz" \
+ && install -m 755 "$name/wt" "$name/git-wt" /usr/local/bin/ \
+ && cd / && rm -rf /tmp/wt
 
 # bb (Bitbucket CLI) is the host's ~/.cargo/bin/bb, bind-mounted by compose.yaml
 # at /usr/local/bin/bb. It keeps its secrets in the Secret Service, so each
