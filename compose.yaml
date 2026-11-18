@@ -122,6 +122,8 @@ services:
       - ${HOME}/.config/acli:${HOME}/.config/acli
       - ${HOME}/.cargo/bin/bb:/usr/local/bin/bb:ro
       - /sys:/sys:ro                 # see note on x-via-tailscale
+      - ${HOME}/.jdks:${HOME}/.jdks:ro
+      - ${HOME}/.m2/repository:${HOME}/.m2/repository
       - ${HOME}/.t3:${HOME}/.t3
       - t3-keyring:${HOME}/.local/share/keyrings   # see herdr
       - t3-bb:${HOME}/.config/bb

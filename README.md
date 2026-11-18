@@ -30,9 +30,10 @@ dirs are mounted at the same absolute paths:
 | `~/.gitconfig`, `~/.config/git` (ro) | herdr, t3        |
 | `~/.config/acli` (Atlassian CLI auth) | herdr, t3 |
 | `~/.cargo/bin/bb` (Bitbucket CLI, ro, at `/usr/local/bin/bb`) | herdr, t3 |
-| `~/.zshrc`, `~/.config/starship.toml`, `~/.jdks` (ro) | herdr |
+| `~/.zshrc`, `~/.config/starship.toml` (ro) | herdr |
+| `~/.jdks` (ro)               | herdr, t3        |
 | `~/.local/state/herdr-core`  | herdr            |
-| `~/.m2/repository` (Maven cache) | herdr        |
+| `~/.m2/repository` (Maven cache) | herdr, t3    |
 | `~/.t3`                      | t3               |
 | `/var/run/docker.sock`       | herdr, t3        |
 
